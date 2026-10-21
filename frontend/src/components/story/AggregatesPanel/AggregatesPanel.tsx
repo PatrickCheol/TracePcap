@@ -49,6 +49,7 @@ interface Props {
 }
 
 function fmtBytes(bytes: number): string {
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes)) return 'N/A';
   if (bytes >= 1_073_741_824) return (bytes / 1_073_741_824).toFixed(1) + ' GB';
   if (bytes >= 1_048_576) return (bytes / 1_048_576).toFixed(1) + ' MB';
   if (bytes >= 1_024) return (bytes / 1_024).toFixed(1) + ' KB';
@@ -56,9 +57,16 @@ function fmtBytes(bytes: number): string {
 }
 
 function fmtInterval(ms: number): string {
+  if (typeof ms !== 'number' || !Number.isFinite(ms)) return 'N/A';
   const s = Math.floor(ms / 1000);
   if (s < 60) return s + 's';
   return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+}
+
+function fmtPct(value: number | null | undefined, scale = 1): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${(value * scale).toFixed(1)}%`
+    : 'N/A';
 }
 
 function CoverageBanner({ aggregates }: { aggregates: StoryAggregates }) {
@@ -89,7 +97,7 @@ function CoverageBanner({ aggregates }: { aggregates: StoryAggregates }) {
       </div>
       <div className="vr d-none d-md-block" />
       <div className="text-center px-3">
-        <div className="fs-5 fw-semibold">{aggregates.unknownAppPct.toFixed(1)}%</div>
+        <div className="fs-5 fw-semibold">{fmtPct(aggregates.unknownAppPct)}</div>
         <div className="text-muted small">Unknown App</div>
       </div>
       {aggregates.tlsAnomalySummary.total > 0 && (
@@ -143,7 +151,7 @@ function TopAsnsTable({ entries }: { entries: AsnEntry[] }) {
             </td>
             <td className="text-end">{e.flowCount.toLocaleString()}</td>
             <td className="text-end">{fmtBytes(e.bytes)}</td>
-            <td className="text-end">{e.pct.toFixed(1)}%</td>
+            <td className="text-end">{fmtPct(e.pct)}</td>
           </tr>
         ))}
       </tbody>
@@ -245,8 +253,8 @@ function BeaconList({ candidates }: { candidates: BeaconCandidate[] }) {
               {b.protocol} &middot; {b.flowCount} flows &middot; avg&nbsp;
               <span className="fw-medium">{fmtInterval(b.avgIntervalMs)}</span>
               &nbsp;&middot; jitter&nbsp;
-              <span className={`fw-medium ${b.cv < 0.1 ? 'text-danger' : 'text-warning'}`}>
-                {(b.cv * 100).toFixed(1)}%
+              <span className={`fw-medium ${typeof b.cv !== 'number' || !Number.isFinite(b.cv) ? 'text-muted' : b.cv < 0.1 ? 'text-danger' : 'text-warning'}`}>
+                {fmtPct(b.cv, 100)}
               </span>
             </div>
           </div>

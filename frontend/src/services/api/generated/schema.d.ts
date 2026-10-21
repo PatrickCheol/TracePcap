@@ -229,6 +229,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/conversations/detail/{conversationId}/packets/{packetNumber}/dissection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Decode one original frame with protocol fields, NAS bit masks and raw bytes */
+        get: operations["dissect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/conversations/detail/{conversationId}/session": {
         parameters: {
             query?: never;
@@ -2159,6 +2176,20 @@ export interface components {
             /** Format: int64 */
             packetCount?: number;
         };
+        DissectionNode: {
+            bitmask?: string;
+            /** Format: int32 */
+            byteLength?: number;
+            /** Format: int32 */
+            byteOffset?: number;
+            description?: string;
+            displayValue?: string;
+            id?: string;
+            label?: string;
+            name?: string;
+            rawValue?: string;
+            source?: string;
+        };
         DnsQueryEntryDto: {
             /** Format: int64 */
             frame?: number;
@@ -2716,6 +2747,19 @@ export interface components {
             label: string;
             rationale?: string;
         };
+        PacketDissectionResponse: {
+            /** Format: int32 */
+            capturedLength?: number;
+            decoder?: string;
+            nasDetected?: boolean;
+            /** Format: int32 */
+            originalLength?: number;
+            /** Format: int64 */
+            packetNumber?: number;
+            protocols?: components["schemas"]["DissectionNode"][];
+            rawHex?: string;
+            warnings?: string[];
+        };
         PacketDto: {
             destination?: components["schemas"]["NetworkEndpoint"];
             flags?: string[];
@@ -2727,6 +2771,27 @@ export interface components {
             source?: components["schemas"]["NetworkEndpoint"];
             /** Format: int64 */
             timestamp?: number;
+        };
+        PacketEvidenceCoverage: {
+            /** Format: int32 */
+            decodedFrames?: number;
+            /** Format: int32 */
+            includedFields?: number;
+            /** Format: int32 */
+            matchedFrames?: number;
+            /** Format: int32 */
+            omittedFields?: number;
+            /** Format: int32 */
+            searchFrameLimit?: number;
+            /** Format: int32 */
+            selectedFrames?: number;
+            selection?: string;
+            status?: string;
+            /** Format: int64 */
+            totalFrames?: number;
+            /** Format: int64 */
+            unsearchedFrames?: number;
+            warnings?: string[];
         };
         PacketLocationResponse: {
             /** Format: uuid */
@@ -2894,6 +2959,8 @@ export interface components {
         StoryAnswerResponse: {
             answer?: string;
             followUpQuestions?: string[];
+            modelUsed?: string;
+            packetEvidence?: components["schemas"]["PacketEvidenceCoverage"];
         };
         StoryQuestionRequest: {
             history?: components["schemas"]["HistoryEntry"][];
@@ -2909,6 +2976,7 @@ export interface components {
             id?: string;
             investigationSteps?: components["schemas"]["InvestigationStep"][];
             narrative?: components["schemas"]["NarrativeSection"][];
+            packetEvidence?: components["schemas"]["PacketEvidenceCoverage"];
             suggestedQuestions?: string[];
             timeline?: components["schemas"]["StoryTimelineEvent"][];
         };
@@ -3422,6 +3490,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    dissect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+                packetNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PacketDissectionResponse"];
+                };
             };
         };
     };

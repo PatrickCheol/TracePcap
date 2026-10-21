@@ -14,6 +14,11 @@
   box-shadow: inset 3px 0 0 #ffc107;
 }
 
+tr[aria-label^='Packet frame']:focus-visible {
+  outline: 2px solid var(--sgds-primary, #6366f1);
+  outline-offset: -2px;
+}
+
 .packet-row-highlighted > td {
   /* Beats Bootstrap's .text-muted on the cells, which would otherwise stay pale. */
   color: #664d03 !important;

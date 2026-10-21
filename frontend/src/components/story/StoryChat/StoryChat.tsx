@@ -3,10 +3,50 @@ import { useState, useRef, useEffect } from 'react';
 import { Button, Card, Form } from '@govtechsg/sgds-react';
 import { Alert } from '@components/common/Alert';
 import { storyService } from '@/features/story/services/storyService';
+import type { PacketEvidenceCoverage } from '@/types';
 
 interface Message {
   role: 'user' | 'assistant';
   text: string;
+  packetEvidence?: PacketEvidenceCoverage | null;
+  modelUsed?: string | null;
+}
+
+const coverageLabels = {
+  complete: 'Selected scope complete',
+  partial: 'Partial coverage',
+  unavailable: 'Unavailable',
+};
+
+function AnswerEvidence({ message }: { message: Message }) {
+  const evidence = message.packetEvidence;
+  if (!evidence && !message.modelUsed) return null;
+  return (
+    <div className="mt-2 pt-2 border-top text-muted" style={{ fontSize: '0.72rem' }}>
+      {message.modelUsed && <div>Model: {message.modelUsed}</div>}
+      {evidence && (
+        <details aria-label="Packet evidence coverage">
+          <summary>Packet evidence · {coverageLabels[evidence.status]}</summary>
+          <div>
+            {evidence.decodedFrames} decoded frames · {evidence.includedFields} fields
+          </div>
+          <div>{evidence.selection}</div>
+          <div>
+            {evidence.matchedFrames} matching frames · {evidence.selectedFrames} selected
+            {evidence.totalFrames != null && ` · ${evidence.totalFrames} total frames`}
+          </div>
+          {evidence.omittedFields > 0 && <div>{evidence.omittedFields} fields omitted</div>}
+          {evidence.unsearchedFrames != null && evidence.unsearchedFrames > 0 && (
+            <div>{evidence.unsearchedFrames} frames outside the search range</div>
+          )}
+          {evidence.warnings.map((warning, index) => (
+            <div key={index}>{warning}</div>
+          ))}
+          <div>Coverage applies to the selected evidence, not every field in the capture.</div>
+        </details>
+      )}
+    </div>
+  );
 }
 
 interface StoryChatProps {
@@ -39,12 +79,16 @@ export const StoryChat = ({ storyId, suggestedQuestions }: StoryChatProps) => {
     setLoading(true);
 
     try {
-      const { answer, followUpQuestions } = await storyService.askQuestion(
-        storyId,
-        question,
-        messages
-      );
-      setMessages(prev => [...prev, { role: 'assistant', text: answer }]);
+      const { answer, followUpQuestions, packetEvidence, modelUsed } =
+        await storyService.askQuestion(
+          storyId,
+          question,
+          messages.map(({ role, text }) => ({ role, text }))
+        );
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', text: answer, packetEvidence, modelUsed },
+      ]);
       setCurrentSuggestions(followUpQuestions ?? []);
     } catch {
       setError('Failed to get a response. Make sure the LLM service is running.');
@@ -99,6 +143,7 @@ export const StoryChat = ({ storyId, suggestedQuestions }: StoryChatProps) => {
                   style={{ maxWidth: '80%', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}
                 >
                   {msg.text}
+                  {msg.role === 'assistant' && <AnswerEvidence message={msg} />}
                 </div>
               </div>
             ))}
@@ -111,15 +156,24 @@ export const StoryChat = ({ storyId, suggestedQuestions }: StoryChatProps) => {
                   <i className="bi bi-cpu text-white" style={{ fontSize: '0.7rem' }}></i>
                 </div>
                 <div className="px-3 py-2 rounded-3 small bg-light border text-muted">
-                  <Spinner animation="border" size="sm" className="me-2" style={{ width: '0.7rem', height: '0.7rem' }} />
-                  Thinking...
+                  <Spinner
+                    animation="border"
+                    size="sm"
+                    className="me-2"
+                    style={{ width: '0.7rem', height: '0.7rem' }}
+                  />
+                  Inspecting packet evidence and thinking...
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {error && <Alert variant="danger" className="mx-3 mt-3 small py-2 mb-0">{error}</Alert>}
+        {error && (
+          <Alert variant="danger" className="mx-3 mt-3 small py-2 mb-0">
+            {error}
+          </Alert>
+        )}
 
         {currentSuggestions.length > 0 && !loading && (
           <div className="px-3 pb-2 pt-3 d-flex flex-wrap gap-2">

@@ -37,6 +37,8 @@ export const API_ENDPOINTS = {
   CONVERSATIONS: (fileId: string) => `/conversations/${fileId}`,
   ENTITY_STATS: (fileId: string) => `/conversations/${fileId}/entity-stats`,
   CONVERSATION_DETAIL: (conversationId: string) => `/conversations/detail/${conversationId}`,
+  PACKET_DISSECTION: (conversationId: string, packetNumber: number) =>
+    `/conversations/detail/${conversationId}/packets/${packetNumber}/dissection`,
   CONVERSATIONS_EXPORT: (fileId: string) => `/conversations/${fileId}/export`,
   CONVERSATIONS_PCAP_EXPORT: (fileId: string) => `/conversations/${fileId}/export-pcap`,
   CONVERSATION_PCAP_EXPORT: (conversationId: string) =>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TracePcap · ChatGPT 연결</title>
+<style>
+  :root { color-scheme: dark; font: 17px/1.65 system-ui,sans-serif; background:#111827; color:#e5e7eb; }
+  body { max-width:650px; margin:10vh auto; padding:24px; }
+  main { padding:32px; border:1px solid #374151; border-radius:16px; background:#172033; }
+  h1 { margin-top:0; font-size:26px; } p { color:#cbd5e1; }
+  button { font:inherit; padding:10px 18px; margin:6px 8px 6px 0; border:0; border-radius:8px; background:#4f46e5; color:white; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:wait; } a { color:#a5b4fc; }
+  #logout { background:#374151; } #status { font-weight:700; } code { font-size:26px; letter-spacing:3px; display:block; padding:14px 0; color:#f8fafc; }
+  #error { color:#fca5a5; white-space:pre-wrap; } small { color:#94a3b8; }
+</style>
+<main>
+  <h1>TracePcap · ChatGPT 연결</h1>
+  <p>ChatGPT 계정으로 로그인하면 TracePcap의 AI 분석을 사용할 수 있습니다. 로그인은 OpenAI 페이지에서 진행됩니다.</p>
+  <p id="status" role="status" aria-live="polite">연결 상태 확인 중…</p>
+  <button id="login" disabled>ChatGPT로 로그인</button>
+  <button id="logout" hidden>로그아웃</button>
+  <section id="device" hidden>
+    <p>아래 OpenAI 페이지를 열고 코드를 입력해 로그인을 완료하세요.</p>
+    <a id="verification" target="_blank" rel="noopener noreferrer">OpenAI 로그인 페이지 열기</a>
+    <code id="code"></code>
+    <p>완료되면 이 화면의 연결 상태가 자동으로 변경됩니다.</p>
+  </section>
+  <p id="error" role="alert"></p>
+  <small>ChatGPT 요금제의 Codex 사용 가능 여부와 사용 한도가 적용됩니다. AI 분석을 실행하면 분석 요청에 포함된 패킷 정보가 OpenAI로 전송됩니다. 자격 증명은 전용 Docker 볼륨에서 Codex가 관리합니다.</small>
+</main>
+<script src="/app.js" defer></script>
+</html>

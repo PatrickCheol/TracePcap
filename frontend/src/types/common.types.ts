@@ -233,7 +233,8 @@ export interface StoryAggregates {
   topExternalAsns: AsnEntry[];
   protocolRiskMatrix: ProtocolRiskEntry[];
   tlsAnomalySummary: TlsAnomalySummary;
-  unknownAppPct: number;
+  /** Not measured when application identification did not complete. */
+  unknownAppPct?: number | null;
   beaconCandidates: BeaconCandidate[];
 }
 
@@ -351,6 +352,27 @@ export interface InvestigationStep {
 }
 
 // Story Types
+export interface PacketEvidenceCoverage {
+  status: 'complete' | 'partial' | 'unavailable';
+  selection: string;
+  totalFrames: number | null;
+  searchFrameLimit: number;
+  matchedFrames: number;
+  selectedFrames: number;
+  decodedFrames: number;
+  includedFields: number;
+  omittedFields: number;
+  unsearchedFrames: number | null;
+  warnings: string[];
+}
+
+export interface StoryAnswer {
+  answer: string;
+  followUpQuestions: string[];
+  packetEvidence?: PacketEvidenceCoverage | null;
+  modelUsed?: string | null;
+}
+
 export interface Story {
   id: string;
   fileId: string;
@@ -362,6 +384,7 @@ export interface Story {
   aggregates?: StoryAggregates;
   findings?: Finding[];
   investigationSteps?: InvestigationStep[];
+  packetEvidence?: PacketEvidenceCoverage | null;
 }
 
 export interface NarrativeSection {

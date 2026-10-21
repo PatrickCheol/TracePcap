@@ -1,0 +1,24 @@
+{
+  "provenance": "Generated locally by scripts/generate_packet_inspector_fixtures.py; all contents synthetic.",
+  "dns.pcap": {
+    "frames": 2,
+    "purpose": "Simple DNS request and response; example.test uses documentation addresses."
+  },
+  "http-reassembled.pcap": {
+    "frames": 6,
+    "purpose": "HTTP GET split across frames 4 and 5 to exercise reassembly and uncertain source offsets."
+  },
+  "nas-ngap.pcap": {
+    "frames": 4,
+    "purpose": "SCTP PPID 60 \u2192 NGAP InitialUEMessage \u2192 NAS-5GS; no decode-as rules needed.",
+    "1": "Plain registration request, initial registration+FOR+ngKSI 7, fake SUCI 001/01.",
+    "2": "Integrity-only outer header with clear Registration Complete, deliberately invalid dummy MAC deadbeef.",
+    "3": "Ciphered outer header with deterministic opaque payload; not real encryption and must not be presented as recovered plaintext.",
+    "4": "Integrity-protected new context Security Mode Command; NEA2+NIA2, deliberately invalid dummy MAC aabbccdd.",
+    "warning": "NAS bodies test decoding only; four InitialUEMessage envelopes do not form a valid live registration procedure or security context."
+  },
+  "truncated.pcap": {
+    "frames": 1,
+    "purpose": "Snaplen-truncated NAS frame: original wire length exceeds stored bytes."
+  }
+}

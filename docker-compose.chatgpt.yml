@@ -1,0 +1,48 @@
+# Local ChatGPT OAuth mode:
+# docker compose -f docker-compose.yml -f docker-compose.chatgpt.yml up -d --build
+# Open http://localhost:8787 and sign in. No OpenAI API key is required.
+services:
+  codex-bridge:
+    build:
+      context: ./codex-bridge
+    restart: unless-stopped
+    init: true
+    environment:
+      CODEX_HOME: /home/node/.codex
+      HOST: 0.0.0.0
+      PORT: "8787"
+      CODEX_MODEL: ${CHATGPT_MODEL:-gpt-6-astra}
+      CODEX_REASONING_EFFORT: ${CHATGPT_REASONING_EFFORT:-high}
+      REQUEST_TIMEOUT_MS: "${CHATGPT_TIMEOUT_MS:-290000}"
+    ports:
+      - "127.0.0.1:${CHATGPT_LOGIN_PORT:-8787}:8787"
+    volumes:
+      - chatgpt_auth:/home/node/.codex
+    networks:
+      - tracepcap-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 768m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  backend:
+    environment:
+      LLM_API_BASE_URL: http://codex-bridge:8787/v1
+      LLM_API_KEY: ""
+      LLM_MODEL: ${CHATGPT_MODEL:-gpt-6-astra}
+      # Existing callers already support free-text JSON as a fallback to function calling.
+      LLM_TOOL_CALLING: "off"
+      LLM_TIMEOUT: "300"
+    depends_on:
+      codex-bridge:
+        condition: service_healthy
+
+volumes:
+  chatgpt_auth:

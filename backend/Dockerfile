@@ -12,6 +12,28 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
+# Build nDPI for the target architecture. ntop's Ubuntu repository only publishes
+# x86_64 packages, so installing `ndpi` from its x64/ repo fails on Apple Silicon.
+# Use the same pinned release on ARM64 and AMD64 instead of silently losing DPI
+# support or forcing the entire backend through x86 emulation.
+FROM ubuntu:22.04 AS ndpi-build
+WORKDIR /src/ndpi
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates curl build-essential autoconf automake libtool pkg-config \
+        gettext flex bison libpcap-dev libjson-c-dev libpcre2-dev && \
+    curl -fsSL --retry 3 https://codeload.github.com/ntop/nDPI/tar.gz/refs/tags/5.0 \
+        -o /tmp/ndpi.tar.gz && \
+    echo '8b0d3dc0c8a6a68578e09a18c922021ef6458d4aca1c7a20ce04efc267aa9ea5  /tmp/ndpi.tar.gz' \
+        | sha256sum -c - && \
+    tar -xzf /tmp/ndpi.tar.gz --strip-components=1 && \
+    ./autogen.sh && ./configure --with-pcre2 && \
+    make -j2 -C src/lib && make -j2 -C example && \
+    install -Dm755 example/ndpiReader /out/ndpiReader && \
+    printf '5.0.0 (source)\n' > /out/ndpi-version
+
 # Stage 2: Runtime
 FROM eclipse-temurin:21-jre-jammy
 
@@ -19,42 +41,36 @@ WORKDIR /app
 
 # Install runtime dependencies:
 #   tshark    — PCAP/pcapng parser
-#   ndpi      — ndpiReader for application-layer DPI (latest from ntop apt repo)
+#   ndpi      — ndpiReader for application-layer DPI (native build above)
 #   suricata  — offline IDS engine for signature-based threat detection (eve.json)
 #   tzdata    — timezone data
 #   gosu      — privilege-drop helper for entrypoint
 #
-# The ntop apt repo is required because Ubuntu 22.04's built-in nDPI (4.2-2)
-# lacks H.225/H.245 session tracking and several protocol signatures added in v5.
-#
-# nDPI is intentionally unpinned: ntop's stable repo only keeps the latest
-# rolling build, so pinning an exact version breaks the build once that .deb is
-# rotated out (404). We always install the latest available and record it in
-# /opt/ndpi-version. To refresh nDPI: rebuild the image and redeploy
+# Ubuntu 22.04's built-in nDPI (4.2-2) lacks H.225/H.245 session tracking and
+# several protocol signatures added in v5. The native source build preserves
+# these on ARM64 too. To refresh nDPI, update its source version/checksum above,
+# rebuild the image and redeploy
 # (offline: run pull-and-save-images.sh, transfer tracepcap-backend.tar, load-images.sh).
 #
+# Cache package lists, not all of /var/lib/apt: extended_states tracks each
+# stage's manual/automatic packages and must not leak from ndpi-build here.
 # BuildKit cache mounts keep downloaded apt packages cached across rebuilds.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         ca-certificates \
-        curl \
-        gnupg && \
-    curl -fsSL https://packages.ntop.org/apt-stable/ntop.key \
-        | gpg --dearmor -o /usr/share/keyrings/ntop-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/ntop-keyring.gpg] https://packages.ntop.org/apt-stable/22.04/ x64/" \
-        > /etc/apt/sources.list.d/ntop.list && \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         tshark \
         tzdata \
         gosu \
         suricata \
-        ndpi && \
-    dpkg-query -W -f='${Version}' ndpi > /opt/ndpi-version && \
-    dpkg-query -W -f='${Version}' suricata > /opt/suricata-version && \
-    apt-get purge -y --auto-remove gnupg curl
+        libpcap0.8 \
+        libjson-c5 \
+        libpcre2-8-0 && \
+    dpkg-query -W -f='${Version}' suricata > /opt/suricata-version
+
+COPY --from=ndpi-build /out/ndpiReader /usr/local/bin/ndpiReader
+COPY --from=ndpi-build /out/ndpi-version /opt/ndpi-version
 
 # Fetch the Emerging Threats Open ruleset at build time (internet is available during build,
 # same curl pattern as the DB-IP MMDB download below). The jammy `suricata` package does not bundle
@@ -70,7 +86,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # (offline: run pull-and-save-images.sh, transfer tracepcap-backend.tar, load-images.sh) —
 # analogous to the nDPI refresh flow above.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl && \
     mkdir -p /etc/suricata/rules /tmp/etrules && \
@@ -87,7 +103,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Published monthly at https://db-ip.com/db/download/ip-to-city-lite
 # Try current month; fall back to previous month if not yet published.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     DEBIAN_FRONTEND=noninteractive apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl && \
     mkdir -p /app/geoip && \
@@ -98,6 +114,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     || curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-${PREV_YM}.mmdb.gz" \
         | gunzip -c > /app/geoip/dbip-city-lite.mmdb && \
     apt-get purge -y --auto-remove curl
+
+# Check the reader after all apt cleanup, which must preserve its runtime libraries.
+# The reader exits 1 after printing help, so check its version banner instead.
+RUN ndpiReader --help 2>&1 | grep -F 'Welcome to nDPI 5.0.0'
 
 # Set timezone to Singapore
 ENV TZ=Asia/Singapore

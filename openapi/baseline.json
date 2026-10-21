@@ -1112,6 +1112,43 @@
         },
         "type": "object"
       },
+      "DissectionNode": {
+        "properties": {
+          "bitmask": {
+            "type": "string"
+          },
+          "byteLength": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "byteOffset": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayValue": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rawValue": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "DnsQueryEntryDto": {
         "properties": {
           "frame": {
@@ -2630,6 +2667,44 @@
         ],
         "type": "object"
       },
+      "PacketDissectionResponse": {
+        "properties": {
+          "capturedLength": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "decoder": {
+            "type": "string"
+          },
+          "nasDetected": {
+            "type": "boolean"
+          },
+          "originalLength": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "packetNumber": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "protocols": {
+            "items": {
+              "$ref": "#/components/schemas/DissectionNode"
+            },
+            "type": "array"
+          },
+          "rawHex": {
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "PacketDto": {
         "properties": {
           "destination": {
@@ -2660,6 +2735,55 @@
           "timestamp": {
             "format": "int64",
             "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PacketEvidenceCoverage": {
+        "properties": {
+          "decodedFrames": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "includedFields": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "matchedFrames": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "omittedFields": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "searchFrameLimit": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "selectedFrames": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "selection": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalFrames": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "unsearchedFrames": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -3106,6 +3230,12 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "modelUsed": {
+            "type": "string"
+          },
+          "packetEvidence": {
+            "$ref": "#/components/schemas/PacketEvidenceCoverage"
           }
         },
         "type": "object"
@@ -3162,6 +3292,9 @@
               "$ref": "#/components/schemas/NarrativeSection"
             },
             "type": "array"
+          },
+          "packetEvidence": {
+            "$ref": "#/components/schemas/PacketEvidenceCoverage"
           },
           "suggestedQuestions": {
             "items": {
@@ -4307,6 +4440,47 @@
         "summary": "Export a single conversation as PCAP",
         "tags": [
           "Conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/detail/{conversationId}/packets/{packetNumber}/dissection": {
+      "get": {
+        "operationId": "dissect",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "packetNumber",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PacketDissectionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Decode one original frame with protocol fields, NAS bit masks and raw bytes",
+        "tags": [
+          "packet-dissection-controller"
         ]
       }
     },

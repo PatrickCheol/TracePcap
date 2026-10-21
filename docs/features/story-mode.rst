@@ -18,6 +18,21 @@ A configured LLM server is required for the narrative and Q&A features (see
 :doc:`../configuration/llm-setup`). The deterministic findings panels work
 without an LLM.
 
+Output language
+---------------
+
+New stories are written in Korean, including narrative titles and explanations,
+highlights, timeline descriptions, suggested questions, investigation hypotheses
+and query labels. Story Q&A answers and follow-up questions also use Korean.
+The deterministic narrative about capture limitations uses Korean as well.
+
+JSON keys and enum values, query filter values, protocol and field names, IDs,
+addresses, raw bytes and observed values remain unchanged. This preserves the
+API contract and the original evidence while localizing the explanation.
+
+Saved stories retain their existing text. Use **Regenerate** to replace an older
+English story with a new Korean analysis.
+
 How Story Generation Works
 --------------------------
 
@@ -96,6 +111,39 @@ Each query from Phase 1 is executed against the database. Up to **10
 conversations** (sorted by total bytes descending) are returned per query as
 evidence. The LLM then receives everything from Phase 1 **plus** the
 investigation results and writes the final narrative.
+
+The final narrative also receives a bounded set of **decoded protocol fields**
+from the original capture, using the same TShark dissectors and byte-source
+validation as the packet inspector. Custom-prompt retries receive these fresh
+observations as well.
+
+Detailed protocol evidence in Q&A
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every question reloads detailed evidence for the story's original file, including
+stories created before this feature. Stored narrative and previous answers do
+not override newly decoded fields. Protocol names or an explicit frame number
+in the question focus the search; SUCI/SUPI questions prioritize 5GS identity
+messages and preserve the enclosing identity path, MCC/MNC labels, routing
+indicator, protection scheme, public-key identifier and observable MSIN or
+scheme output. HTTP, DNS, FTP, TLS and other decoded protocols use the same
+evidence path.
+
+Each supplied field carries its frame number, conversation ID, parent path,
+decoder label/value, raw bytes where available, verified byte offset, bit mask
+and data source. Reassembled fields are not represented as original-frame
+offsets. Ciphered NAS or SUCI scheme output is not automatically decrypted, and
+the prompt forbids inventing missing identities or recovering an encrypted SUPI.
+All capture-derived content is explicitly treated as untrusted data.
+
+Extraction downloads the original once per request and searches the first
+**100,000 frames**, decodes at most **24 selected frames** in a batch, and sends
+at most **400 fields / 64,000 JSON characters**. A shared 50-second extraction
+budget, per-process limits and a 500 MB capture limit bound resource use.
+The ``packetEvidence`` manifest in Story and Q&A responses reports the selection,
+matched/selected/decoded counts, omitted fields, unsearched frames and warnings.
+``partial`` or ``unavailable`` must not be interpreted as absence of a protocol
+or identity in the full capture. Q&A responses also identify ``modelUsed``.
 
 If Phase 1 fails for any reason (e.g. LLM error, context-length exceeded),
 the pipeline falls back to generating the narrative directly from the

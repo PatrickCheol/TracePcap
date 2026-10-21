@@ -1,6 +1,6 @@
 import { apiClient } from '@/services/api/client';
 import { API_ENDPOINTS } from '@/services/api/endpoints';
-import type { Answer, InvestigationReport, Story } from '@/types';
+import type { Answer, InvestigationReport, Story, StoryAnswer } from '@/types';
 
 /** Goal → the standard-question key the panel already has a label and icon for. */
 const GOAL_QUESTION: Record<string, string> = {
@@ -23,8 +23,8 @@ export interface InvestigationSummary {
 /** Flattens a report into panel answers: each answered goal, then any non-goal answers. */
 export function investigationToSummary(report: InvestigationReport): InvestigationSummary {
   const goalAnswers: Answer[] = report.goals
-    .filter((g) => g.answered && g.headline)
-    .map((g) => ({
+    .filter(g => g.answered && g.headline)
+    .map(g => ({
       question: GOAL_QUESTION[g.goal] ?? g.goal.toLowerCase(),
       headline: g.headline as string,
       grade: g.grade ?? 'INFERRED',
@@ -36,7 +36,7 @@ export function investigationToSummary(report: InvestigationReport): Investigati
   // "Not established" is only meaningful once there is an incident to be incomplete about. On a
   // capture whose only answer is, say, a signed-in user, listing victim/malware/C2 as unestablished
   // reads like a failure on a benign capture — there was never a lead to follow.
-  const incidentLead = answers.some((a) => INCIDENT_QUESTIONS.has(a.question));
+  const incidentLead = answers.some(a => INCIDENT_QUESTIONS.has(a.question));
   return { answers, unknowns: incidentLead ? report.unknowns : [] };
 }
 
@@ -98,11 +98,11 @@ export const storyService = {
     storyId: string,
     question: string,
     history: { role: 'user' | 'assistant'; text: string }[]
-  ): Promise<{ answer: string; followUpQuestions: string[] }> => {
-    const response = await apiClient.post<{ answer: string; followUpQuestions: string[] }>(
-      API_ENDPOINTS.ASK_STORY(storyId),
-      { question, history }
-    );
+  ): Promise<StoryAnswer> => {
+    const response = await apiClient.post<StoryAnswer>(API_ENDPOINTS.ASK_STORY(storyId), {
+      question,
+      history,
+    });
     return response.data;
   },
 

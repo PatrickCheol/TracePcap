@@ -52,6 +52,8 @@ PASSTHROUGH = {
 # the offline file is still unreachable from the base stack.
 STACKS = {
     "dev":          (["docker-compose.yml"], ["application.yml"]),
+    "chatgpt":      (["docker-compose.yml", "docker-compose.chatgpt.yml"],
+                     ["application.yml"]),
     "prod":         (["docker-compose.yml", "docker-compose.prod.yml"],
                      ["application.yml", "application-prod.yml"]),
     "offline":      (["docker-compose.offline.yml"], ["application.yml"]),

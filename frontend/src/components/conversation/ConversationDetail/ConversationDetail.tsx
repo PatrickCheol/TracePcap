@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Badge, Button, Card } from '@govtechsg/sgds-react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ import { deviceTypeLabel, deviceTypeColor, deviceTypeIcon } from '@/utils/device
 import { useEscapeLayer } from '@/utils/useEscapeLayer';
 import { Pagination } from '@components/common/Pagination/Pagination';
 import { HexViewer } from '../HexViewer/HexViewer';
+import { PacketInspector } from '../PacketInspector/PacketInspector';
 import { SessionTab } from '../SessionTab/SessionTab';
 import { EntityDetailModal } from '@components/common/EntityDetailModal';
 import { isPrivateIp } from '@/utils/ipClassification';
@@ -547,7 +548,7 @@ export const ConversationDetail = ({
         {activeTab === 'packets' && (
           <Card.Body className="p-0">
             <div className="px-3 py-2 border-bottom d-flex justify-content-end">
-              <small className="text-muted">Click a row to view hex payload</small>
+              <small className="text-muted">Select a packet to inspect protocol fields, raw bytes, and bits</small>
             </div>
             <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
               <table
@@ -566,7 +567,7 @@ export const ConversationDetail = ({
                 </colgroup>
                 <thead className="sticky-top bg-light">
                   <tr>
-                    <th style={thStyle}>#</th>
+                    <th style={thStyle} title="Original frame number in the capture">Frame</th>
                     <th></th>
                     <th style={thStyle}>Timestamp</th>
                     <th style={thStyle}>Source</th>
@@ -578,13 +579,22 @@ export const ConversationDetail = ({
                 </thead>
                 <tbody>
                   {allPackets.length > 0 ? (
-                    visiblePackets.map((packet, index) => (
-                      <>
+                    visiblePackets.map(packet => (
+                      <Fragment key={packet.id}>
                         <tr
-                          key={packet.id}
                           ref={packet.packetNumber === highlightPacketNumber ? highlightRowRef : undefined}
                           onClick={() => togglePacket(packet.id)}
-                          style={{ cursor: packet.payload ? 'pointer' : 'default' }}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              togglePacket(packet.id);
+                            }
+                          }}
+                          tabIndex={0}
+                          aria-label={`Packet frame ${packet.packetNumber ?? 'unknown'} details`}
+                          aria-expanded={expandedPacketId === packet.id}
+                          aria-controls={expandedPacketId === packet.id ? `packet-details-${packet.id}` : undefined}
+                          style={{ cursor: 'pointer' }}
                           className={[
                             packet.packetNumber === highlightPacketNumber ? 'packet-row-highlighted' : '',
                             expandedPacketId === packet.id ? 'table-active' : '',
@@ -592,7 +602,7 @@ export const ConversationDetail = ({
                             .filter(Boolean)
                             .join(' ') || undefined}
                         >
-                          <td className="text-muted">{(packetPageClamped - 1) * packetPageSize + index + 1}</td>
+                          <td className="text-muted">{packet.packetNumber ?? '—'}</td>
                           <td className={getDirectionClass(packet)}>
                             <strong>{getDirectionIndicator(packet)}</strong>
                           </td>
@@ -659,20 +669,16 @@ export const ConversationDetail = ({
                           </td>
                         </tr>
                         {expandedPacketId === packet.id && (
-                          <tr key={`${packet.id}-hex`}>
-                            <td colSpan={8} className="p-2">
-                              {packet.payload ? (
-                                <HexViewer
-                                  hex={packet.payload}
-                                  truncated={packet.payload.length >= 2048}
-                                />
-                              ) : (
-                                <p className="text-muted small mb-0">No payload data available.</p>
-                              )}
+                          <tr>
+                            <td colSpan={8} className="p-2" id={`packet-details-${packet.id}`}>
+                              {packet.packetNumber != null ? <PacketInspector conversationId={conversation.id} packetNumber={packet.packetNumber} /> : <>
+                                <p className="text-muted small">Original frame number is unavailable. Only the saved payload preview can be shown.</p>
+                                <HexViewer hex={packet.payload} truncated={packet.payload.length >= 2048} />
+                              </>}
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     ))
                   ) : (
                     <tr>

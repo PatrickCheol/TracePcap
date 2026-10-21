@@ -26,3 +26,11 @@ docs/_build/
 
 # Local backup archives (scripts/backup.sh)
 /backups/
+
+# Local ChatGPT bridge runtime and authentication data
+codex-bridge/.codex/
+codex-bridge/node_modules/
+codex-bridge/empty/
+codex-bridge/*.log
+codex-bridge/core
+codex-bridge/core.*

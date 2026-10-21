@@ -14,6 +14,7 @@ import type {
   HostIdentityEvidence,
 } from '@/types';
 import type { ConversationFilters } from '../types';
+import type { PacketDissection } from '../types/packetDissection';
 
 // Backend response types
 interface ConversationApiResponse {
@@ -211,6 +212,18 @@ export interface SessionData {
 }
 
 export const conversationService = {
+  /** Decode an original capture frame on demand; no saved payload preview is used. */
+  getPacketDissection: async (
+    conversationId: string,
+    packetNumber: number,
+    signal?: AbortSignal,
+  ): Promise<PacketDissection> => {
+    const response = await apiClient.get<PacketDissection>(
+      API_ENDPOINTS.PACKET_DISSECTION(conversationId, packetNumber),
+      { signal },
+    );
+    return response.data;
+  },
   /**
    * Get conversations for a PCAP file with structured filtering, sorting, and pagination.
    */

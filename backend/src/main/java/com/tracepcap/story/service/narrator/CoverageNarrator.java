@@ -49,26 +49,25 @@ public class CoverageNarrator implements Narrator {
     // Null means nDPI did not complete — the share is unknowable, not zero and not 100% (#501).
     if (context.aggregates() != null && context.aggregates().getUnknownAppPct() == null) {
       caveats.add(
-          "Application identification did not run for this capture, so the share of unidentified"
-              + " traffic is unknown. Any statement about which applications were present is"
-              + " incomplete — this is a tooling gap, not a property of the network.");
+          "이 캡처에서는 애플리케이션 식별이 실행되지 않아 미식별 트래픽의 비율을 알 수 없습니다. "
+              + "따라서 어떤 애플리케이션이 있었는지에 관한 분석은 불완전합니다. "
+              + "이는 네트워크의 특성이 아니라 분석 도구의 실행 범위에 따른 한계입니다.");
     }
 
     if (context.summary() != null
         && (context.summary().startTime() == null || context.summary().endTime() == null)) {
       caveats.add(
-          "The capture carries no usable timestamps, so nothing here can be placed in time or"
-              + " described as a sequence.");
+          "캡처에 사용할 수 있는 타임스탬프가 없어 사건의 발생 시각이나 순서를 판단할 수 없습니다.");
     }
 
     if (caveats.isEmpty()) return List.of();
 
     return List.of(
         NarrativeSection.builder()
-            .title("What This Capture Cannot Tell Us")
+            .title("이 캡처로 확인할 수 없는 사항")
             .type(NarrativeSection.SectionType.summary)
             .content(
-                "Read everything below with these limits in mind:\n\n- "
+                "다음과 같은 분석 한계를 고려해 결과를 확인해 주세요:\n\n- "
                     + String.join("\n- ", caveats))
             .build());
   }

@@ -1,5 +1,73 @@
 <h1 align="center">TracePcap</h1>
 
+## PatrickCheol 포크 안내
+
+이 저장소는 [NotYuSheng/TracePcap](https://github.com/NotYuSheng/TracePcap)을 기반으로
+패킷 상세 분석과 한국어 AI 분석을 추가한 [PatrickCheol/TracePcap](https://github.com/PatrickCheol/TracePcap) 포크입니다.
+원본의 범용 PCAP 분석 기능을 유지하면서 **5G NAS 비트 분석**, **실제 패킷 근거를 사용하는 Story/Q&A**,
+**ChatGPT OAuth 로그인**, **Apple Silicon 빌드**를 확장했습니다.
+원본 저작권 표시와 [MIT 라이선스](LICENSE)를 유지합니다. 아래 영문 소개와 원본 문서 링크도 보존했습니다.
+
+### 이 포크에서 추가·수정한 기능
+
+| 기능 | 동작 |
+|---|---|
+| **개별 패킷 상세 분석** | `Conversations → 대화 선택 → Packets → 패킷 클릭`으로 원본 프레임을 TShark로 디코딩합니다. 프로토콜 트리·필드 검색·실제 프레임 번호·전체 캡처 바이트를 확인할 수 있습니다. |
+| **5G NAS 비트 분석** | 보안 헤더·등록 유형·보안 알고리즘 등의 디코딩 값, 바이트 위치와 길이, 원시 비트, 제공된 비트 마스크를 연결합니다. NAS가 중첩된 NGAP 경로를 자동으로 펼치며, 모든 깊이에 들여쓰기·연결선과 가로 스크롤을 유지합니다. |
+| **새 패킷 근거를 사용하는 AI** | Story 생성과 후속 질문에서 원본 캡처의 디코딩 필드를 조회합니다. SUCI 질문에는 식별자 컨테이너·MCC/MNC·보호 방식 등 관련 필드를 우선 제공하고, 패킷 번호·필드 경로·원시 값에 근거해 답변하도록 합니다. 기존 Story에 없던 필드도 후속 질문에서 조회할 수 있습니다. |
+| **분석 범위 표시** | Q&A의 `Packet evidence`에서 선택 범위, 디코딩한 프레임·필드 수, 생략된 필드·미검색 프레임·경고와 사용 모델을 확인할 수 있습니다. 부분 분석을 전체 캡처 분석으로 표시하지 않습니다. |
+| **한국어 Story/Q&A** | 새로 생성하는 본문·제목·핵심 이벤트·추천 질문과 후속 답변을 한국어로 작성하도록 설정했습니다. 프로토콜명·필드명·주소·원시 값은 보존합니다. 기존 영문 Story는 재생성하면 적용되며, UI 전체 번역은 포함하지 않습니다. |
+| **API 키 없는 ChatGPT 로그인** | 공식 Codex app-server를 사용하는 선택적 OAuth 브리지를 추가했습니다. 기본 모델은 `gpt-6-astra`, 추론 강도는 `high`이며 환경변수로 바꿀 수 있습니다. |
+| **M3 / ARM64 Docker 빌드** | x64 전용 nDPI 패키지 설치 대신 nDPI를 소스에서 빌드해 Apple Silicon의 ARM64 환경에서도 실행할 수 있도록 수정했습니다. |
+| **Story 화면 안정성** | Story 로드 전후 Hook 순서 오류와 집계의 `null` 처리 오류를 수정했습니다. 측정되지 않은 값은 `N/A`로, 실제 측정값 0은 0으로 구분합니다. |
+
+### 빠른 실행 — ChatGPT OAuth
+
+Docker와 Docker Compose를 준비한 뒤 실행합니다.
+
+```bash
+git clone https://github.com/PatrickCheol/TracePcap.git
+cd TracePcap
+cp .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.chatgpt.yml up -d --build
+```
+
+1. [ChatGPT 연결 페이지](http://localhost:8787)에서 **ChatGPT로 로그인**을 누르고 공식 인증 페이지에서 코드를 입력합니다.
+2. [TracePcap](http://localhost)에서 PCAP을 업로드합니다. 포트를 변경했다면 `NGINX_PORT`에 설정한 주소를 사용합니다.
+3. 패킷 상세는 **Conversations**, 한국어 분석과 후속 질문은 **Story**에서 확인합니다.
+
+모델을 변경하려면 `.env`에 설정하고 같은 Compose 명령으로 브리지와 백엔드를 다시 생성합니다.
+사용 가능한 모델과 한도는 로그인 계정에서 지원하는 범위를 따릅니다.
+
+```dotenv
+CHATGPT_MODEL=gpt-6-astra
+CHATGPT_REASONING_EFFORT=high
+```
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.chatgpt.yml up -d --force-recreate codex-bridge backend
+```
+
+로그인 정보는 전용 Docker 볼륨 `chatgpt_auth`에 저장합니다.
+패킷 상세 디코딩은 로컬에서 실행되며 AI 로그인이 필요하지 않습니다.
+**Story/Q&A 등 AI 기능을 실행하면 선택된 디코딩 필드·원시 필드 바이트·대화 및 탐지 결과가 설정된 LLM으로 전송됩니다.**
+ChatGPT OAuth 구성에서는 OpenAI로 전송되므로 인터넷 연결이 필요합니다.
+로컬 LLM 구성과 자세한 설정은 아래 영문 안내 및 [ChatGPT 설정 문서](CHATGPT_SETUP.md)를 참고하세요.
+
+### 패킷 해석 범위
+
+암호화된 NAS 본문을 읽으려면 적절한 키와 보안 문맥이 필요합니다. 이 포크가 이를 자동 복호화하거나
+NAS MAC의 유효성을 검증하는 것은 아닙니다. 원본 프레임·재조립 데이터·생성 필드를 구분하고,
+정확한 마스크나 바이트 순서가 없는 필드의 비트 위치를 추정하지 않습니다.
+
+AI 패킷 근거는 질문과 관련된 범위를 선택해 제공합니다. 현재 예산은 최대 24프레임·400필드·64,000자이며,
+후보 검색은 처음 100,000프레임으로 제한됩니다. **선택 범위의 분석 완료는 전체 캡처의 모든 필드를 분석했다는 뜻이 아닙니다.**
+실제 제공 범위와 생략 여부는 결과의 메타데이터로 확인할 수 있습니다.
+구체적인 동작은 [패킷 상세 분석 문서](docs/features/packet-details.rst), 재현용 합성 캡처는
+[테스트 픽스처 안내](test-fixtures/packet-inspector/README.md)를 참고하세요.
+
+---
+
 <p align="center">
   <strong>Self-hosted PCAP analysis tool for black-box network traffic forensics — reconstruct devices, topology, sessions, and threats from captured packets alone, with no prior knowledge of the network.</strong>
 </p>
@@ -22,7 +90,7 @@
 
 ---
 
-**TracePcap** is a self-hosted PCAP analysis workbench for **black-box network analysis** — situations where you work from the **traffic itself**, with no documentation or prior knowledge of the network. Upload one or more packet captures and TracePcap characterises devices, maps topology, reconstructs sessions, detects threats, tracks changes over time, and generates AI-powered narratives — all derived purely from observed traffic. It runs fully **offline / air-gapped** and keeps packet data on your own infrastructure.
+**TracePcap** is a self-hosted PCAP analysis workbench for **black-box network analysis** — situations where you work from the **traffic itself**, with no documentation or prior knowledge of the network. Upload one or more packet captures and TracePcap characterises devices, maps topology, reconstructs sessions, detects threats, tracks changes over time, and generates AI-powered narratives — all derived purely from observed traffic. With a local inference server, it runs fully **offline / air-gapped** and keeps packet data on your own infrastructure. The optional ChatGPT login mode described below uses online inference.
 
 This makes it well-suited for:
 
@@ -57,6 +125,7 @@ TracePcap's capabilities fall into five pillars. Each links to its full page in 
 |---|---|
 | **Conversation Tracking** | Paginated conversation list with advanced filtering (IP, port, protocol, app, risk, custom rules, device type, country, payload pattern), multi-column sorting, column picker, and bulk PCAP export |
 | **Session Reconstruction** | TCP/UDP application-layer payload decoding with a hex + ASCII viewer for inspecting raw packet payloads |
+| **Packet Inspector** | Click a packet in Conversations to decode its complete original frame, explore protocol fields, and inspect NAS bit masks with byte-linked evidence; see [packet details](docs/features/packet-details.rst) |
 | **File Extraction** | HTTP object extraction and raw TCP/UDP stream extraction; automatic MIME type detection; bulk download |
 | **Timeline Analysis** | Chronological traffic visualization with configurable time granularity and protocol breakdown |
 
@@ -110,7 +179,7 @@ The default stack's container limits total ~4.4GB (~5.4GB with the Keycloak auth
 
 **1. Clone and set up:**
 ```bash
-git clone https://github.com/NotYuSheng/TracePcap.git
+git clone https://github.com/PatrickCheol/TracePcap.git
 cd TracePcap
 cp .env.example .env
 ```
@@ -130,7 +199,24 @@ docker compose up -d
 
 **4. Open** [http://localhost:80](http://localhost:80) in your browser.
 
-> **Note:** First startup may take a minute while PostgreSQL and MinIO initialise. AI features require a running LLM server pointed to by `LLM_API_BASE_URL`; all other features work without it. TracePcap is built to run fully offline — `LLM_API_BASE_URL` must point to a self- or LAN-hosted server, never a public/internet API.
+> **Note:** First startup may take a minute while PostgreSQL and MinIO initialise. All non-AI features work without an LLM. For fully offline AI, use a self- or LAN-hosted inference server reachable from the backend container.
+
+### ChatGPT login (no API key)
+
+This checkout also supports an optional ChatGPT OAuth bridge through the official Codex
+app-server. Run the stack with:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.chatgpt.yml up -d --build
+```
+
+Open [http://localhost:8787](http://localhost:8787), select **Sign in with ChatGPT**, and
+complete the device-code login. Then use TracePcap at its normal address. The login is stored
+in a separate Docker volume; no host Codex credentials need to be copied.
+
+This mode sends AI prompts and capture-derived context to OpenAI and requires internet access
+and an eligible ChatGPT account. It is a local, single-account integration. See
+[ChatGPT setup and M3 build troubleshooting](CHATGPT_SETUP.md) for details.
 
 ## Usage
 

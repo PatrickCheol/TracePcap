@@ -1,6 +1,7 @@
 package com.tracepcap.story.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.tracepcap.analysis.spi.PacketEvidenceLookup.Coverage;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +21,9 @@ public class StoryResponse {
   private List<Highlight> highlights;
   private List<StoryTimelineEvent> timeline;
   private List<String> suggestedQuestions;
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private Coverage packetEvidence;
 
   /** Pre-computed aggregates over the full conversation dataset. Null for legacy cached stories. */
   @JsonInclude(JsonInclude.Include.NON_NULL)

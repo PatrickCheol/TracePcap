@@ -111,8 +111,8 @@ class NarratorRegistryTest {
 
     assertThat(sections).hasSize(1);
     assertThat(sections.get(0).getContent())
-        .contains("Application identification did not run")
-        .contains("tooling gap, not a property of the network");
+        .contains("애플리케이션 식별이 실행되지 않아")
+        .contains("네트워크의 특성이 아니라 분석 도구의 실행 범위에 따른 한계");
   }
 
   /** Nothing to caveat, nothing to say — a section that exists to fill a slot teaches skimming. */
