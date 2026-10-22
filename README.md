@@ -1,6 +1,6 @@
 <h1 align="center">TracePcap</h1>
 
-## PatrickCheol 포크 안내
+## ddubom 포크 안내
 
 이 저장소는 [NotYuSheng/TracePcap](https://github.com/NotYuSheng/TracePcap)을 기반으로
 패킷 상세 분석과 한국어 AI 분석을 추가한 [PatrickCheol/TracePcap](https://github.com/PatrickCheol/TracePcap) 포크입니다.
